@@ -7,6 +7,7 @@
 
 module Views.Repo ( viewTreeOrCommit
                   , viewBlob
+                  , viewMBranches
                   ) where
 
 import Prelude hiding (div, span, id)
@@ -15,13 +16,38 @@ import Control.Monad
 import qualified Data.List as List
 import qualified Data.ByteString.Char8 as S8
 
-import Text.Blaze.Html5 hiding (title, style)
+import Text.Blaze.Html5 hiding (title, style, map)
 import Text.Blaze.Html5.Attributes hiding (label, form, span, title)
 
 import Gitstar.Repo
 
 import Utils
 
+viewMBranches :: Repo -> Maybe [(String, SHA1)] -> Html
+viewMBranches repo mbranches = do
+  h2 . toHtml $ "Browse " ++ repo2url repo
+  case mbranches of
+    Just branches | not (null branches) -> do
+      let bNames = map fst branches
+          master = if "master" `elem` bNames
+                     then "master"
+                     else List.head bNames
+          rest   = List.delete master bNames
+      ul ! class_ "nav nav-pills" $ do
+        li ! class_ "nav-middle-header" $ "View branch:"
+        li ! class_ "dropdown" $ do
+          a ! class_ "dropdown-toggle" ! dataAttribute "toggle" "dropdown"
+            ! href "#" $ do
+            toHtml master
+            span ! class_ "caret" $ ""
+          ul ! class_ "dropdown-menu" $
+            forM_ (master:rest) $ \branch ->
+              li $ a ! href (branchUrl branch) $ toHtml branch
+    _ -> p . toHtml $ defaultMsg
+  where defaultMsg :: String
+        defaultMsg = "Project doesn't seem to have any branches." ++
+                     " Perhaps you should push to a branch such as \'master\'."
+        branchUrl branch = toValue $ repo2url repo ++ "/tree/" ++ branch
 
 -- | Show a commit or tree.
 viewTreeOrCommit :: Repo
@@ -37,7 +63,10 @@ viewTreeOrCommit repo _   mcommit tree dirs = do
                     [(title, title)] (safeTail dirs)
       -- tree path
       path  = snd . last $ links
-  ul ! class_"breadcrumb" $ 
+  ul ! class_"breadcrumb" $ do
+    li $ do a ! href (toValue $ repo2url repo) $
+              span ! class_ "icon-home" $ " "
+            span ! class_ "divider" $ "/"
     forM_ links $ \(n,lnk) -> 
         li $ do a ! href (toValue $ repo2url repo ++ "/tree/" ++ lnk) $ toHtml n
                 span ! class_ "divider" $ "/"
@@ -73,6 +102,8 @@ viewBlob repo _  blob dirs = do
       (objName, objPath)  = last links'
       links = init links'
   ul ! class_"breadcrumb" $ do
+    li $ do a ! href (toValue $ repo2url repo) $ span ! class_ "icon-home" $ " "
+            span ! class_ "divider" $ "/"
     forM_ links $ \(n,lnk) -> 
         li $ do a ! href (toValue $ repo2url repo ++ "/tree/" ++ lnk) $ toHtml n
                 span ! class_ "divider" $ "/"
@@ -86,7 +117,7 @@ viewBlob repo _  blob dirs = do
 htmlTreeEntry :: Repo -> GitTreeEntry -> String -> Html
 htmlTreeEntry repo ent branch = do
   span ! class_ (entIcon ent) $ " "
-  " "
+  void " "
   a ! href (toValue $ repo2url repo ++ "/" ++ entObjType ent
                                     ++ "/" ++ branch
                                     ++ "/" ++ entPath ent) $
@@ -106,7 +137,7 @@ entIcon ent = case entType ent of
   GtTree   -> "icon-folder-open"
   GtBlob   -> "icon-file"
   GtTag    -> "icon-tag"
-  GtCommit -> "icon-map-marker"
+  GtCommit -> "icon-flag"
 
 --
 -- Misc

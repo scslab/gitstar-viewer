@@ -16,4 +16,10 @@ welcomeView :: Html
 welcomeView = do
   div ! class_ "hero-unit" $ do
     h1 $ "Gitstar Viewer"
-    p $ toHtml $ ( "It's not the M or the C...." :: String)
+    p $ toHtml msg
+    p $ a ! href "/scs/gitstar-viewer" ! class_ "btn btn-large btn-primary" $
+          "Browse this project!"
+   where msg :: String
+         msg = "A simple app for browsing gitstar git repositories." ++
+               " To view project repos point your browser to" ++
+               " /user/project/"

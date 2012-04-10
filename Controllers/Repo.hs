@@ -9,7 +9,7 @@
 
 module Controllers.Repo ( showTreeOrCommit
                         , showBlob
-                        , showMasterBranch
+                        , showBranches
                         ) where
 
 import Layouts
@@ -30,11 +30,13 @@ import qualified Data.ByteString.Char8 as S8
 import System.FilePath (splitDirectories)
 
 -- | Redirect to show master branch
-showMasterBranch :: Action t b DC ()
-showMasterBranch = do
+showBranches :: Action t b DC ()
+showBranches = do
   uName <- getParamVal "user_name"
   pName <- getParamVal "project_name"
-  redirectTo $ "/" ++ uName ++ "/" ++ pName ++ "/tree/master"
+  let repo = Repo { repoOwner = uName, repoName = pName }
+  mbranches <- liftLIO $ getBranches repo
+  renderHtml $ viewMBranches repo mbranches
 
 
 --

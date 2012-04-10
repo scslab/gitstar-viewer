@@ -28,5 +28,5 @@ server = runAction $ do
                      routeAction showBlob
     , routeMethod "GET" $
         routePattern "/:user_name/:project_name" $
-                     routeAction showMasterBranch
+                     routeAction showBranches
     ]
