@@ -12,12 +12,11 @@ module Views.Repo ( viewTreeOrCommit
 import Prelude hiding (div, span, id)
 import Control.Monad
 
-import Data.Maybe (fromMaybe)
 import qualified Data.List as List
 import qualified Data.ByteString.Char8 as S8
 
 import Text.Blaze.Html5 hiding (title, style)
-import Text.Blaze.Html5.Attributes hiding (label, form, span)
+import Text.Blaze.Html5.Attributes hiding (label, form, span, title)
 
 import Gitstar.Repo
 
@@ -31,7 +30,7 @@ viewTreeOrCommit :: Repo
                  -> GitTree
                  -> [String]
                  -> Html
-viewTreeOrCommit repo sha mcommit tree dirs = do
+viewTreeOrCommit repo _   mcommit tree dirs = do
   let title = List.head dirs -- branch name
       -- (name, path) pairs for building breadcrumb links
       links = foldl (\paths d -> paths ++ [(d, (snd . List.last) paths ++ "/" ++ d)])
@@ -39,8 +38,8 @@ viewTreeOrCommit repo sha mcommit tree dirs = do
       -- tree path
       path  = snd . last $ links
   ul ! class_"breadcrumb" $ 
-    forM_ links $ \(n,link) -> 
-        li $ do a ! href (toValue $ repo2url repo ++ "/tree/" ++ link) $ toHtml n
+    forM_ links $ \(n,lnk) -> 
+        li $ do a ! href (toValue $ repo2url repo ++ "/tree/" ++ lnk) $ toHtml n
                 span ! class_ "divider" $ "/"
   case mcommit of
     Nothing -> return ()
@@ -66,7 +65,7 @@ viewBlob :: Repo
          -> GitBlob
          -> [String]
          -> Html
-viewBlob repo sha blob dirs = do
+viewBlob repo _  blob dirs = do
   let title = List.head dirs -- branch name
       -- (name, path) pairs for building breadcrumb links
       links' = foldl (\paths d -> paths ++ [(d, (snd . List.last) paths ++ "/" ++ d)])
@@ -74,8 +73,8 @@ viewBlob repo sha blob dirs = do
       (objName, objPath)  = last links'
       links = init links'
   ul ! class_"breadcrumb" $ do
-    forM_ links $ \(n,link) -> 
-        li $ do a ! href (toValue $ repo2url repo ++ "/tree/" ++ link) $ toHtml n
+    forM_ links $ \(n,lnk) -> 
+        li $ do a ! href (toValue $ repo2url repo ++ "/tree/" ++ lnk) $ toHtml n
                 span ! class_ "divider" $ "/"
     li $ a ! href (toValue $ repo2url repo ++ "/blob/" ++ objPath) $
          toHtml objName

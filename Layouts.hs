@@ -8,12 +8,9 @@ module Layouts where
 
 import LIO
 import Policy.Gitstar
-import Data.Maybe
-import qualified Data.ByteString.Lazy.Char8 as L8
 import Data.IterIO.Http.Support
 
 import Hails.App
-import Hails.Crypto
 
 import Prelude hiding (head, id, div, span)
 import Text.Blaze.Html5 hiding (map)
@@ -30,7 +27,7 @@ stylesheet :: String -> Html
 stylesheet uri = link ! rel "stylesheet" ! type_ "text/css" ! href (toValue uri)
 
 application :: User -> Html -> Html
-application user content = docTypeHtml $ do
+application _ content = docTypeHtml $ do
   head $ do
     title $ "GitStar - Where loops count"
     stylesheet "/static/css/bootstrap.css"

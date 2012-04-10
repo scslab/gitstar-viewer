@@ -4,14 +4,12 @@
 #endif
 module Viewer where
 
-import Data.ByteString.Char8
 import Data.Monoid
 import Hails.App
 import Data.IterIO.Http.Support
 import Control.Monad (void)
 
 import Controllers
-import RawRepo
 
 server :: AppReqHandler
 server = runAction $ do

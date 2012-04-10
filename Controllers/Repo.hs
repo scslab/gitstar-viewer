@@ -18,18 +18,14 @@ import Utils
 
 import LIO
 import LIO.DCLabel
-import LIO.TCB
 
 import Gitstar.Repo
-
-import Control.Monad
 
 import qualified Data.List as List
 import Data.Maybe
 import Data.IterIO.Http
 import Data.IterIO.Http.Support
 import qualified Data.ByteString.Char8 as S8
-import qualified Data.ByteString.Lazy.Char8 as L8
 
 import System.FilePath (splitDirectories)
 
