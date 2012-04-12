@@ -11,15 +11,20 @@ module Views.Repo ( viewTreeOrCommit
                   ) where
 
 import Prelude hiding (div, span, id)
+import qualified Prelude as Prelude
 import Control.Monad
 
 import qualified Data.List as List
 import qualified Data.ByteString.Char8 as S8
+import qualified Data.ByteString.Base64 as B64
 
 import Text.Blaze.Html5 hiding (title, style, map)
 import Text.Blaze.Html5.Attributes hiding (label, form, span, title)
 
 import Gitstar.Repo
+
+import System.FilePath.Posix (takeExtension)
+import Hails.IterIO.HailsRoute (systemMimeMap)
 
 import Utils
 
@@ -110,8 +115,19 @@ viewBlob repo _  blob dirs = do
     li $ a ! href (toValue $ repo2url repo ++ "/blob/" ++ objPath) $
          toHtml objName
   div $ pre ! class_ "prettyprint linenums" $
-        toHtml $ S8.unpack $ blobContent blob
-              
+        let mimeType = takeWhile (/= '/') $ getMimeType objName
+            decoder = if mimeType == "text"
+                        then B64.decodeLenient else Prelude.id
+        in toHtml . S8.unpack . decoder $ blobContent blob
+
+
+-- | Get the mime type based on extension
+getMimeType :: FilePath -> String
+getMimeType path =
+  let ext = takeExtension path
+  in if null ext
+      then "application/octet-stream" -- unknown
+      else S8.unpack $ systemMimeMap (tail ext)
 
 -- | Create: entry-icon <a href="entry-type/branch/entry-path">entry-path</a>
 htmlTreeEntry :: Repo -> GitTreeEntry -> String -> Html
