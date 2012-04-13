@@ -126,7 +126,7 @@ viewCommit repo cmtObj diffs = do
   let commit = commitObj cmtObj
   forM_ (zip diffs nrs) $ \(diff, nr) -> do
     let path = dpathName . diffPath $ diff
-    div ! id (toValue $ "#diff-" ++ show nr) $ do
+    div ! id (toValue $ "diff-" ++ show nr) $ do
       div ! class_ "diff-title curved" $ do
         span $ toHtml path
         span ! class_ "diff-show-file" $

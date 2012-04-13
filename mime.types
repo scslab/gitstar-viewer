@@ -1,1 +1,3 @@
-text/x-markdown md markdown
+text/x-markdown   md markdown
+text/x-javascript js
+text/x-cabal      cabal
