@@ -7,6 +7,7 @@
 
 module Views.Repo ( viewTreeOrCommit
                   , viewBlob
+                  , viewCommit
                   , viewMBranches
                   ) where
 
@@ -31,6 +32,9 @@ import Hails.IterIO.HailsRoute (systemMimeMap)
 import Models
 import Utils
 
+import Data.UniDiff
+
+-- | Show main branch selector page
 viewMBranches :: Repo -> Maybe [(String, SHA1)] -> Html
 viewMBranches repo mbranches = do
   h2 . toHtml $ "Browse " ++ repo2url repo
@@ -84,14 +88,95 @@ viewTreeOrCommit repo _   mcommit tree dirs = do
     colgroup $ do
       col 
       col ! class_ "span2"
-    thead $ tr $ do th "name"
-                    th "size"
+    thead ! class_ "curved" $ tr $ do th "name"
+                                      th "size"
     tbody $ forM_ tree $ \ent ->
       tr $ do th $ htmlTreeEntry repo ent path
               th $ maybe "--" (toHtml . showSize) $ entSize ent
       where showSize x = let dkb = truncate $ (toRational x) / 1024 * 100 :: Int
                              kb = fromRational $ toRational dkb / 100 :: Double
                          in show kb ++ " KB"
+
+-- | Show a commit object
+viewCommit :: Repo -> CommitObj -> [GitDiff] -> Html
+viewCommit repo cmtObj diffs = do
+  -- Show commit info
+  htmlCommitBox repo cmtObj
+  -- Show file changes
+  let stats  = commitStats cmtObj
+  let nrs = [1..] :: [Int]
+  table ! class_ "table" $ do
+    colgroup $ do
+      col ! class_ "span1"
+      col 
+      col ! class_ "span2"
+      col ! class_ "span2"
+    forM_ (zip diffs nrs) $ \(diff,nr) -> do
+      let path = dpathName . diffPath $ diff
+          stat = getFileStat stats path
+      tr $ do
+         td $ case dpathChanges (diffPath diff) of
+               Just NewFile     -> span ! class_ "icon-plus-sign" $ ""
+               Just DeletedFile -> span ! class_ "icon-minus-sign" $ ""
+               _                -> span ! class_ "icon-adjust" $ ""
+         td $ a ! href (toValue $ "#diff-" ++ show nr) $ toHtml path
+         td $ toHtml $ pluralize (fstatAdditions stat) "addition"
+         td $ toHtml $ pluralize (fstatDeletions stat) "deletion"
+  -- Show individual file diffs
+  let commit = commitObj cmtObj
+  forM_ (zip diffs nrs) $ \(diff, nr) -> do
+    let path = dpathName . diffPath $ diff
+    div ! id (toValue $ "#diff-" ++ show nr) $ do
+      div ! class_ "diff-title curved" $ do
+        span $ toHtml path
+        span ! class_ "diff-show-file" $
+          let shaS = show (cmtPtr commit)
+          in if (dpathChanges . diffPath $ diff) == Just DeletedFile
+               then ""
+               else a ! class_ "sha"
+                      ! href (toValue $ repo2url repo ++ "/blob/"
+                                        ++ shaS ++ "/" ++ path) $
+                                          toHtml $ "View file @" ++ take 6 shaS
+      div ! class_ "diff-content" $ pre $
+          let mimeType = takeWhile (/= '/') $ getMimeType path
+              diffFile = B64.decodeLenient $ diffContent diff
+          in if mimeType == "text"
+               then fromMaybe (rawDiff diffFile) $ diffToHtml diffFile
+               else p ! class_ "pagination-centered" $
+                      "Diffs on text files only."
+
+  where getFileStat stats path = 
+          -- fail is datastructure mismatch
+          fromJust $ List.find ((==path) . fstatPath) $ statFiles stats
+        rawDiff file = 
+          let ls = lines $ S8.unpack file
+          in toHtml . unlines . safeTail $ ls
+
+diffToHtml :: S8.ByteString -> Maybe Html
+diffToHtml file = do
+  ls <- parseDiff file
+  return $ 
+    table ! class_ "table-striped table-bordered" $ do
+      colgroup $ do
+        col
+        col
+        col ! class_ "col-content"
+      forM_ ls $ \l -> tr $ do
+        let ltype = dlineType l 
+            td' x = td ! class_ "diff-lineno" $ x
+        case ltype of
+          (Remove x) -> td' (toHtml $ show x) >> td' " "
+          (Insert x) -> td' " " >> td' (toHtml $ show x)
+          (Common x) -> td' (toHtml $ show x) >> td' (toHtml $ show x)
+          _          -> td' "..." >> td' "..."
+        td $ div ! class_ (typeToClass ltype) $ do
+                 toHtml . S8.unpack $ dlineCont l
+ where typeToClass t = case t of
+         Remove _ -> "diff-remove"
+         Insert _ -> "diff-insert"
+         Common _ -> "diff-common"
+         Hunk     -> "diff-hunk"
+
 -- | Show a blob
 viewBlob :: Repo
          -> SHA1
@@ -191,8 +276,10 @@ htmlCommitBox repo cmtObj = do
                  ++ pluralize (statDeletions stats) "deletion"
                  ++ "."
           br
-          void "parents: "
-          forM_ (cmtParents commit) $ \sha -> showSha False sha >> " "
+          let parents = cmtParents commit
+          toHtml ("parent" ++ if length parents /= 1
+                                  then "s: " else ": " :: String)
+          forM_ parents $ \sha -> showSha False sha >> " "
       where rmFrontWS = dropWhile (all isSpace)
             showSha isCommit sha = 
               let shaS = show sha
@@ -201,10 +288,13 @@ htmlCommitBox repo cmtObj = do
               in a ! class_ (toValue classes)
                    ! href (toValue $ repo2url repo ++ "/commit/" ++ shaS) 
                    $ toHtml (take 6 shaS)
-            pluralize n s = show n ++ " " ++ (if n == 1 then s else s++"s")
 --
 -- Misc
 --
+
+-- | Print a number and pluralize suffix
+pluralize :: Int -> String -> String
+pluralize n s = show n ++ " " ++ (if n == 1 then s else s++"s")
 
 repo2url :: Repo -> String
 repo2url r = "/" ++ repoOwner r ++ "/" ++ repoName r
