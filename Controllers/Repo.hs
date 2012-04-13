@@ -10,8 +10,10 @@
 module Controllers.Repo ( showTreeOrCommit
                         , showBlob
                         , showBranches
+                        , showCommit
                         ) where
 
+import Models
 import Layouts
 import Views.Repo
 import Utils
@@ -20,6 +22,8 @@ import LIO
 import LIO.DCLabel
 
 import Gitstar.Repo
+
+import Control.Monad
 
 import qualified Data.List as List
 import Data.Maybe
@@ -40,7 +44,7 @@ showBranches = do
 
 
 --
--- Tree / commit
+-- Tree / commit tree
 --
 
 -- | Find the branch/tree and and diplay the corresponding
@@ -59,20 +63,20 @@ showTreeOrCommit = do
     if null bs
       then respond404
       else case List.lookup bName bs of
-            Just sha -> commitShow repo sha dirs
+            Just sha -> treeCommitShow repo sha dirs
             _        -> treeShow repo (SHA1 bName) dirs Nothing 
                           
 
 -- | Given a title and refernce to the commit, find the commit object
 -- and tree it points to, and show them.
-commitShow :: Repo -> SHA1 -> [String] -> Action t b DC ()
-commitShow repo sha dirs = do
-  mcommit <- liftLIO $ getCommit repo sha
+treeCommitShow :: Repo -> SHA1 -> [String] -> Action t b DC ()
+treeCommitShow repo sha dirs = do
+  mcommit <- liftLIO $ getCommitObj repo sha
   with404orJust mcommit $ \commit ->
-    treeShow repo (cmtTree commit) dirs (Just commit)
+    treeShow repo (cmtTree . commitObj $  commit) dirs (Just commit)
 
 -- | Show a tree
-treeShow :: Repo -> SHA1 -> [String] -> Maybe GitCommit -> Action t b DC ()
+treeShow :: Repo -> SHA1 -> [String] -> Maybe CommitObj -> Action t b DC ()
 treeShow repo sha dirs mcommit = do
   mtree <- liftLIO $ getTree repo sha
   with404orJust mtree $ \tree -> do
@@ -96,6 +100,24 @@ getTreeByPath repo headTree dirs =
                              case mtree of
                                Nothing -> return Nothing
                                Just tree -> getTreeByPath repo tree newPath
+
+
+--
+-- Commit objects
+--
+
+showCommit :: Action t b DC ()
+showCommit = do
+  uName <- getParamVal "user_name"
+  pName <- getParamVal "project_name"
+  sha   <- SHA1 `liftM` getParamVal "id"
+  let repo = Repo { repoOwner = uName, repoName = pName }
+  mcommit <- liftLIO $ getCommitObj repo sha
+  mdiffs  <- liftLIO $ getDiffs repo sha 
+  let mcd = mcommit >>= \mc -> mdiffs >>= \md -> return (mc,md)
+  with404orJust mcd $ \(commit, diffs) -> 
+    renderHtml $ viewCommit repo commit diffs
+
 
 
 --
