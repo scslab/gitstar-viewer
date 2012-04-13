@@ -27,6 +27,9 @@ server = runAction $ do
         routePattern "/:user_name/:project_name/blob/:id" $
                      routeAction showBlob
     , routeMethod "GET" $
+        routePattern "/:user_name/:project_name/commit/:id" $
+                     routeAction showCommit
+    , routeMethod "GET" $
         routePattern "/:user_name/:project_name" $
                      routeAction showBranches
     ]
