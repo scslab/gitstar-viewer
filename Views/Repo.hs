@@ -14,6 +14,8 @@ import Prelude hiding (div, span, id)
 import qualified Prelude as Prelude
 import Control.Monad
 
+import Data.Char (isSpace)
+import Data.Maybe
 import qualified Data.List as List
 import qualified Data.ByteString.Char8 as S8
 import qualified Data.ByteString.Base64 as B64
@@ -26,6 +28,7 @@ import Gitstar.Repo
 import System.FilePath.Posix (takeExtension)
 import Hails.IterIO.HailsRoute (systemMimeMap)
 
+import Models
 import Utils
 
 viewMBranches :: Repo -> Maybe [(String, SHA1)] -> Html
@@ -57,7 +60,7 @@ viewMBranches repo mbranches = do
 -- | Show a commit or tree.
 viewTreeOrCommit :: Repo
                  -> SHA1
-                 -> Maybe GitCommit
+                 -> Maybe CommitObj
                  -> GitTree
                  -> [String]
                  -> Html
@@ -75,24 +78,20 @@ viewTreeOrCommit repo _   mcommit tree dirs = do
     forM_ links $ \(n,lnk) -> 
         li $ do a ! href (toValue $ repo2url repo ++ "/tree/" ++ lnk) $ toHtml n
                 span ! class_ "divider" $ "/"
-  case mcommit of
-    Nothing -> return ()
-    Just commit -> 
-      div ! class_ "alert fade in alert-commit" $ do
-        a ! class_ "close" !
-          dataAttribute "dismiss" "alert"  $ preEscapedString "&times;"
-        let author = cmtAuthor commit
-        h4 ! class_ "alert-heading" $ do
-          span ! class_ "icon-comment" $ " "
-          toHtml $ "  " ++ (S8.unpack $ authName author)
-                ++ " <" ++ (S8.unpack $ authEmail author) ++ "> "
-        blockquote $ do
-          p . toHtml . S8.unpack $ cmtMessage commit
-          p . em . small . toHtml $ "Authored " ++ (S8.unpack $ authDate author)
+  -- Generate comit box, if any:
+  maybe (return ()) (htmlCommitBox repo) mcommit
   table ! class_ "table table-bordered table-condensed" $ do
-    thead $ tr $ th "name"
-    tbody $ forM_ tree $ \ent -> tr $ th $ htmlTreeEntry repo ent path
-
+    colgroup $ do
+      col 
+      col ! class_ "span2"
+    thead $ tr $ do th "name"
+                    th "size"
+    tbody $ forM_ tree $ \ent ->
+      tr $ do th $ htmlTreeEntry repo ent path
+              th $ maybe "--" (toHtml . showSize) $ entSize ent
+      where showSize x = let dkb = truncate $ (toRational x) / 1024 * 100 :: Int
+                             kb = fromRational $ toRational dkb / 100 :: Double
+                         in show kb ++ " KB"
 -- | Show a blob
 viewBlob :: Repo
          -> SHA1
@@ -155,9 +154,60 @@ entIcon ent = case entType ent of
   GtTag    -> "icon-tag"
   GtCommit -> "icon-flag"
 
+-- | Generate alert-box with commit message and stats
+htmlCommitBox :: Repo -> CommitObj -> Html
+htmlCommitBox repo cmtObj = do
+  let commit = commitObj cmtObj
+      stats  = commitStats cmtObj
+  div ! class_ "alert fade in alert-commit" $ do
+    a ! class_ "close" !
+      dataAttribute "dismiss" "alert"  $ preEscapedString "&times;"
+    div ! class_ "row-fluid" $ do
+      let author = cmtAuthor commit
+          message = lines . S8.unpack . cmtMessage $ commit
+      div ! class_ "span8" $ do
+        h4 ! class_ "alert-heading" $ do
+          span ! class_ "icon-comment" $ " "
+          toHtml $ " " ++ safeHead "" message
+        blockquote $ do
+          div ! id "commit-message" $
+            forM_ (rmFrontWS . safeTail $  message) $ \l -> toHtml l >> br
+          a ! id "commit-message-show" ! href "#" $ 
+            span ! class_ "icon-chevron-down" $ ""
+          void " "
+          a ! id "commit-message-hide" ! href "#" $ 
+            span ! class_ "icon-chevron-up" $ ""
+          p . em . small . toHtml $ "Authored " ++ (S8.unpack $ authDate author)
+                                    ++ " by " ++ (S8.unpack $ authName author)
+                                    ++ " <"  ++ (S8.unpack $ authEmail author)
+                                    ++ "> "
+      div ! class_ "span4 commit-info" $ do
+        div $ showSha True (cmtPtr commit)
+        p $ do
+          toHtml $ pluralize (length . statFiles $ stats) "file"
+                 ++ " changed, with "
+                 ++ pluralize (statAdditions stats) "addition"
+                 ++ " and "
+                 ++ pluralize (statDeletions stats) "deletion"
+                 ++ "."
+          br
+          void "parents: "
+          forM_ (cmtParents commit) $ \sha -> showSha False sha >> " "
+      where rmFrontWS = dropWhile (all isSpace)
+            showSha isCommit sha = 
+              let shaS = show sha
+                  classes :: String
+                  classes = "sha" ++ if isCommit then " label" else ""
+              in a ! class_ (toValue classes)
+                   ! href (toValue $ repo2url repo ++ "/commit/" ++ shaS) 
+                   $ toHtml (take 6 shaS)
+            pluralize n s = show n ++ " " ++ (if n == 1 then s else s++"s")
 --
 -- Misc
 --
 
 repo2url :: Repo -> String
 repo2url r = "/" ++ repoOwner r ++ "/" ++ repoName r
+
+safeHead :: a -> [a] -> a
+safeHead def ls = fromMaybe def $ listToMaybe ls

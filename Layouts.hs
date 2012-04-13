@@ -42,4 +42,5 @@ application _ content = docTypeHtml $ do
      script ! src "/static/js/bootstrap.min.js" $ ""
      script ! src "/static/js/prettify.js" $ ""
      script ! src "/static/js/flash.js" $ ""
+     script ! src "/static/js/application.js" $ ""
 

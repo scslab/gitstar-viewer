@@ -12,6 +12,7 @@ module Controllers.Repo ( showTreeOrCommit
                         , showBranches
                         ) where
 
+import Models
 import Layouts
 import Views.Repo
 import Utils
@@ -67,12 +68,12 @@ showTreeOrCommit = do
 -- and tree it points to, and show them.
 commitShow :: Repo -> SHA1 -> [String] -> Action t b DC ()
 commitShow repo sha dirs = do
-  mcommit <- liftLIO $ getCommit repo sha
+  mcommit <- liftLIO $ getCommitObj repo sha
   with404orJust mcommit $ \commit ->
-    treeShow repo (cmtTree commit) dirs (Just commit)
+    treeShow repo (cmtTree . commitObj $  commit) dirs (Just commit)
 
 -- | Show a tree
-treeShow :: Repo -> SHA1 -> [String] -> Maybe GitCommit -> Action t b DC ()
+treeShow :: Repo -> SHA1 -> [String] -> Maybe CommitObj -> Action t b DC ()
 treeShow repo sha dirs mcommit = do
   mtree <- liftLIO $ getTree repo sha
   with404orJust mtree $ \tree -> do

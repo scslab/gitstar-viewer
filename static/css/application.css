@@ -46,3 +46,16 @@ p {
   margin-right: -15px;
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
 }
+
+#commit-message {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.commit-info {
+  text-align: right;
+  font-size: 11px;
+}
+.sha {
+  font-family: Menlo, Monaco, "Courier New", monospace;
+}
