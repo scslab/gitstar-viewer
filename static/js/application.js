@@ -1,4 +1,5 @@
-$(function () {
+$(function() {
+  window.parent.postMessage(document.height.toString(), "*");
 
   /* Hide commit message */
   $("#commit-message").hide();
