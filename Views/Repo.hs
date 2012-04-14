@@ -113,15 +113,20 @@ viewCommit repo cmtObj diffs = do
       col ! class_ "span2"
     forM_ (zip diffs nrs) $ \(diff,nr) -> do
       let path = dpathName . diffPath $ diff
-          stat = getFileStat stats path
+          mstat = getFileStat stats path
       tr $ do
          td $ case dpathChanges (diffPath diff) of
                Just NewFile     -> span ! class_ "icon-plus-sign" $ ""
                Just DeletedFile -> span ! class_ "icon-minus-sign" $ ""
                _                -> span ! class_ "icon-adjust" $ ""
          td $ a ! href (toValue $ "#diff-" ++ show nr) $ toHtml path
-         td $ toHtml $ pluralize (fstatAdditions stat) "addition"
-         td $ toHtml $ pluralize (fstatDeletions stat) "deletion"
+         case mstat of
+           Nothing -> do
+             td ""
+             td ""
+           Just stat -> do
+             td $ toHtml $ pluralize (fstatAdditions stat) "addition"
+             td $ toHtml $ pluralize (fstatDeletions stat) "deletion"
   -- Show individual file diffs
   let commit = commitObj cmtObj
   forM_ (zip diffs nrs) $ \(diff, nr) -> do
@@ -147,7 +152,7 @@ viewCommit repo cmtObj diffs = do
 
   where getFileStat stats path = 
           -- fail is datastructure mismatch
-          fromJust $ List.find ((==path) . fstatPath) $ statFiles stats
+          List.find ((==path) . fstatPath) $ statFiles stats
         rawDiff file = 
           let ls = lines $ S8.unpack file
           in toHtml . unlines . safeTail $ ls
