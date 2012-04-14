@@ -200,9 +200,7 @@ viewBlob repo _  blob dirs = do
          toHtml objName
   div $ pre ! class_ "prettyprint linenums" $
         let mimeType = takeWhile (/= '/') $ getMimeType objName
-            decoder = if mimeType == "text"
-                        then B64.decodeLenient else Prelude.id
-        in toHtml . S8.unpack . decoder $ blobContent blob
+        in toHtml . S8.unpack . B64.decodeLenient $ blobContent blob
 
 
 -- | Get the mime type based on extension
