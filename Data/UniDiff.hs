@@ -49,7 +49,8 @@ s8ToLine (r,i) l = case () of
   _ | isRemove l -> (r+1,i  , DiffLine { dlineType = Remove r, dlineCont = l })
   _ | isInsert l -> (r  ,i+1, DiffLine { dlineType = Insert i, dlineCont = l })
   _ | isHunk l   -> (r  ,i  , DiffLine { dlineType = Hunk    , dlineCont = l })
-  _              -> (r+1,i+1, DiffLine { dlineType = Common r, dlineCont = l })
+  _              -> (r+1,i+1, DiffLine { dlineType = Common (max r i)
+                                                             , dlineCont = l })
 
 -- | Parse all lines of a file
 parseLines :: (Int, Int) -> [S] -> Maybe [DiffLine]
