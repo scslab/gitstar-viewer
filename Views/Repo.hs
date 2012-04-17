@@ -143,12 +143,8 @@ viewCommit repo cmtObj diffs = do
                                         ++ shaS ++ "/" ++ path) $
                                           toHtml $ "View file @" ++ take 6 shaS
       div ! class_ "diff-content" $ pre $
-          let mimeType = takeWhile (/= '/') $ getMimeType path
-              diffFile = B64.decodeLenient $ diffContent diff
-          in if mimeType == "text"
-               then fromMaybe (rawDiff diffFile) $ diffToHtml diffFile
-               else p ! class_ "pagination-centered" $
-                      "Diffs on text files only."
+          let diffFile = B64.decodeLenient $ diffContent diff
+          in fromMaybe (rawDiff diffFile) $ diffToHtml diffFile
 
   where getFileStat stats path = 
           -- fail is datastructure mismatch
@@ -204,8 +200,7 @@ viewBlob repo _  blob dirs = do
     li $ a ! href (toValue $ repo2url repo ++ "/blob/" ++ objPath) $
          toHtml objName
   div $ pre ! class_ "prettyprint linenums" $
-        let mimeType = takeWhile (/= '/') $ getMimeType objName
-        in toHtml . S8.unpack . B64.decodeLenient $ blobContent blob
+        toHtml . S8.unpack . B64.decodeLenient $ blobContent blob
 
 
 -- | Get the mime type based on extension
