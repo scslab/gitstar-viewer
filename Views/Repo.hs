@@ -27,7 +27,7 @@ import Text.Blaze.Html5.Attributes hiding (label, form, span, title)
 import Gitstar.Repo
 
 import System.FilePath.Posix (takeExtension)
-import Hails.IterIO.HailsRoute (systemMimeMap)
+import Hails.IterIO.Mime
 
 import Models
 import Utils
