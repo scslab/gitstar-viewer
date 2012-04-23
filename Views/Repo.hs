@@ -9,6 +9,8 @@ module Views.Repo ( viewTreeOrCommit
                   , viewBlob
                   , viewCommit
                   , viewMBranches
+                  --
+                  , viewFilteredBlob 
                   ) where
 
 import Prelude hiding (div, span, id)
@@ -184,7 +186,38 @@ viewBlob :: Repo
          -> GitBlob
          -> [String]
          -> Html
-viewBlob repo _  blob dirs = do
+viewBlob repo sha blob dirs = do
+  let title = List.head dirs -- branch name
+      -- (name, path) pairs for building breadcrumb links
+      links' = foldl (\paths d -> paths ++ [(d, (snd . List.last) paths ++ "/" ++ d)])
+                     [(title, title)] (safeTail dirs)
+      (objName, objPath)  = last links'
+      links = init links'
+  ul ! class_"breadcrumb" $ do
+    li $ do a ! href (toValue $ repo2url repo) $ span ! class_ "icon-home" $ " "
+            span ! class_ "divider" $ "/"
+    forM_ links $ \(n,lnk) -> 
+        li $ do a ! href (toValue $ repo2url repo ++ "/tree/" ++ lnk) $ toHtml n
+                span ! class_ "divider" $ "/"
+    li $ a ! href (toValue $ repo2url repo ++ "/blob/" ++ objPath) $
+         toHtml objName
+    when (takeExtension objName `elem` [".c", ".hs"]) $
+      a ! href (toValue $ repo2url repo ++ "/lint/" ++ List.intercalate "/" dirs)
+        ! class_ "lint" $ do
+          span ! class_ "icon-question-sign white" $ "" 
+          " Lint"
+  div $ pre ! class_ "prettyprint linenums" $
+        toHtml . S8.unpack . B64.decodeLenient $ blobContent blob
+
+-- | Show a filtered blob
+viewFilteredBlob :: Repo
+                 -> SHA1
+                 -> GitBlob
+                 -> String
+                 -> S8.ByteString
+                 -> [String]
+                 -> Html
+viewFilteredBlob repo sha blob filterTitle fblob dirs = do
   let title = List.head dirs -- branch name
       -- (name, path) pairs for building breadcrumb links
       links' = foldl (\paths d -> paths ++ [(d, (snd . List.last) paths ++ "/" ++ d)])
@@ -201,6 +234,8 @@ viewBlob repo _  blob dirs = do
          toHtml objName
   div $ pre ! class_ "prettyprint linenums" $
         toHtml . S8.unpack . B64.decodeLenient $ blobContent blob
+  div $ do h3 $ toHtml filterTitle
+           pre $ toHtml . S8.unpack $ fblob
 
 
 -- | Get the mime type based on extension

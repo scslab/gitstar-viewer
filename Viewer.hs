@@ -21,6 +21,9 @@ server = runAction $ do
   runActionRoute $ mconcat 
     [ routeTop $ routeAction welcome
     , routeMethod "GET" $
+        routePattern "/:user_name/:project_name/lint/:id" $
+                     routeAction showLint
+    , routeMethod "GET" $
         routePattern "/:user_name/:project_name/tree/:id" $
                      routeAction showTreeOrCommit
     , routeMethod "GET" $
