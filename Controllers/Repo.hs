@@ -11,6 +11,8 @@ module Controllers.Repo ( showTreeOrCommit
                         , showBlob
                         , showBranches
                         , showCommit
+                        --
+                        , showLint
                         ) where
 
 import Models
@@ -19,7 +21,11 @@ import Views.Repo
 import Utils
 
 import LIO
+import LIO.MonadCatch
+import LIO.Handle
 import LIO.DCLabel
+
+import Hails.CJail
 
 import Gitstar.Repo
 
@@ -29,9 +35,11 @@ import qualified Data.List as List
 import Data.Maybe
 import Data.IterIO.Http
 import Data.IterIO.Http.Support
+import qualified Data.ByteString.Base64 as B64
 import qualified Data.ByteString.Char8 as S8
+import qualified Data.ByteString.Lazy.Char8 as L8
 
-import System.FilePath (splitDirectories)
+import System.FilePath (splitDirectories, takeExtension)
 
 -- | Redirect to show master branch
 showBranches :: Action t b DC ()
@@ -124,8 +132,10 @@ showCommit = do
 -- Blobs
 --
 
-showBlob :: Action t b DC ()
-showBlob = do
+-- | Generic blob show (view function may perform some filtering)
+showBlobGen :: (Repo -> SHA1 -> GitBlob -> [FilePath] -> Action t b DC ()) 
+            -> Action t b DC ()
+showBlobGen viewBlobFunc = do
   uName <- getParamVal "user_name"
   pName <- getParamVal "project_name"
   bName <- getParamVal "id" -- tree sha or branch name
@@ -147,7 +157,31 @@ showBlob = do
                   in with404orJust mEnt $ \ent -> do
                        mblob <- liftLIO $ getBlob repo (entPtr ent)
                        with404orJust mblob $ \blob -> 
-                        renderHtml $ viewBlob repo sha blob dirs
+                        viewBlobFunc repo sha blob dirs
+
+showBlob :: Action t b DC ()
+showBlob = showBlobGen (\repo sha blob dirs ->
+                        renderHtml $ viewBlob repo sha blob dirs)
+
+showLint :: Action t b DC ()
+showLint = showBlobGen (\repo sha blob dirs -> do
+  let (lint,tmp) = case takeExtension (last dirs) of
+                     ex@(".hs") -> ("hlint", "/tmp/xxx"++ex)
+                     ex         -> ("splint","/tmp/xxx"++ex)
+  out <- liftLIO $ inCJail' $ do
+    lph <- createProcess (shell $ "cat > " ++ tmp ++ " && " ++ lint ++ " " ++ tmp)
+    liftLIO $ hPut (stdIn lph) (B64.decodeLenient $ blobContent blob)
+    liftLIO $ hClose (stdIn lph)
+    resErr <- liftLIO $ hGetContents (stdErr lph)
+    res <- liftLIO $ hGetContents (stdOut lph)
+    let nres = S8.unlines $ map (stripPrefix . S8.pack $ tmp ++ ":") $ S8.lines res
+    return $ if S8.null nres then resErr else nres
+  renderHtml $ viewFilteredBlob repo sha blob (lint ++ " output:") out dirs)
+    where stripPrefix s ss = if s `S8.isPrefixOf` ss
+                              then S8.drop (S8.length s) ss
+                              else ss
+          inCJail' act = (inCJail act) `onException` return "Execution failed"
+
 
 --
 -- Misc
