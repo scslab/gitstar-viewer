@@ -165,17 +165,18 @@ showBlob = showBlobGen (\repo sha blob dirs ->
 
 showLint :: Action t b DC ()
 showLint = showBlobGen (\repo sha blob dirs -> do
-  let (lint,tmp) = case takeExtension (last dirs) of
-                     ex@(".hs") -> ("hlint", "/tmp/xxx"++ex)
-                     ex         -> ("splint","/tmp/xxx"++ex)
+  let fname = last dirs
+      lint = case takeExtension fname of
+                   ".hs"  -> "hlint"
+                   _      -> "splint"
   out <- liftLIO $ inCJail' $ do
-    lph <- createProcess (shell $ "cat > " ++ tmp ++ " && " ++ lint ++ " " ++ tmp)
+    lph <- createProcess (shell $ "cd /tmp; cat > " ++ fname ++
+                                  " && " ++ lint ++ " " ++ fname)
     liftLIO $ hPut (stdIn lph) (B64.decodeLenient $ blobContent blob)
     liftLIO $ hClose (stdIn lph)
     resErr <- liftLIO $ hGetContents (stdErr lph)
-    res <- liftLIO $ hGetContents (stdOut lph)
-    let nres = S8.unlines $ map (stripPrefix . S8.pack $ tmp ++ ":") $ S8.lines res
-    return $ if S8.null nres then resErr else nres
+    resOut <- liftLIO $ hGetContents (stdOut lph)
+    return $ if S8.null resOut then resErr else resOut
   renderHtml $ viewFilteredBlob repo sha blob (lint ++ " output:") out dirs)
     where stripPrefix s ss = if s `S8.isPrefixOf` ss
                               then S8.drop (S8.length s) ss
