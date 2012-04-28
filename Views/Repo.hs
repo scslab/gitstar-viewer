@@ -11,6 +11,7 @@ module Views.Repo ( viewTreeOrCommit
                   , viewMBranches
                   --
                   , viewFilteredBlob 
+                  , repo2url
                   ) where
 
 import Prelude hiding (div, span, id)
@@ -29,7 +30,6 @@ import Text.Blaze.Html5.Attributes hiding (label, form, span, title)
 import Gitstar.Repo
 
 import System.FilePath.Posix (takeExtension)
-import Hails.IterIO.Mime
 
 import Models
 import Utils
@@ -186,7 +186,7 @@ viewBlob :: Repo
          -> GitBlob
          -> [String]
          -> Html
-viewBlob repo sha blob dirs = do
+viewBlob repo _   blob dirs = do
   let title = List.head dirs -- branch name
       -- (name, path) pairs for building breadcrumb links
       links' = foldl (\paths d -> paths ++ [(d, (snd . List.last) paths ++ "/" ++ d)])
@@ -217,7 +217,7 @@ viewFilteredBlob :: Repo
                  -> S8.ByteString
                  -> [String]
                  -> Html
-viewFilteredBlob repo sha blob filterTitle fblob dirs = do
+viewFilteredBlob repo _   blob filterTitle fblob dirs = do
   let title = List.head dirs -- branch name
       -- (name, path) pairs for building breadcrumb links
       links' = foldl (\paths d -> paths ++ [(d, (snd . List.last) paths ++ "/" ++ d)])
@@ -237,14 +237,6 @@ viewFilteredBlob repo sha blob filterTitle fblob dirs = do
   div $ do h3 $ toHtml filterTitle
            pre $ toHtml . S8.unpack $ fblob
 
-
--- | Get the mime type based on extension
-getMimeType :: FilePath -> String
-getMimeType path =
-  let ext = takeExtension path
-  in if null ext
-      then "application/octet-stream" -- unknown
-      else S8.unpack $ systemMimeMap (tail ext)
 
 -- | Create: entry-icon <a href="entry-type/branch/entry-path">entry-path</a>
 htmlTreeEntry :: Repo -> GitTreeEntry -> String -> Html

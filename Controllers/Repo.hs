@@ -37,7 +37,6 @@ import Data.IterIO.Http
 import Data.IterIO.Http.Support
 import qualified Data.ByteString.Base64 as B64
 import qualified Data.ByteString.Char8 as S8
-import qualified Data.ByteString.Lazy.Char8 as L8
 
 import System.FilePath (splitDirectories, takeExtension)
 
@@ -48,7 +47,14 @@ showBranches = do
   pName <- getParamVal "project_name"
   let repo = Repo { repoOwner = uName, repoName = pName }
   mbranches <- liftLIO $ getBranches repo
-  renderHtml $ viewMBranches repo mbranches
+  redirectToMasterOrSingle repo mbranches
+    where redirectToMasterOrSingle repo mbs = 
+            case mbs of 
+              Just bs  | "master" `elem` map fst bs ->
+                redirectToRepo repo "tree/master"
+              Just [(b,_)] -> redirectToRepo repo $ "tree/" ++ b
+              _        -> renderHtml $ viewMBranches repo mbs
+          redirectToRepo r s = redirectTo $ repo2url r ++ "/" ++ s
 
 
 --
@@ -178,10 +184,8 @@ showLint = showBlobGen (\repo sha blob dirs -> do
     resOut <- liftLIO $ hGetContents (stdOut lph)
     return $ if S8.null resOut then resErr else resOut
   renderHtml $ viewFilteredBlob repo sha blob (lint ++ " output:") out dirs)
-    where stripPrefix s ss = if s `S8.isPrefixOf` ss
-                              then S8.drop (S8.length s) ss
-                              else ss
-          inCJail' act = (inCJail act) `onException` return "Execution failed"
+    where inCJail' act = (inCJail act) `onException`
+                          return ("Execution failed" :: String)
 
 
 --
