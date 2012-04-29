@@ -26,7 +26,7 @@ Library
                  gitstar >= 0.1 && < 1.0,
                  hails-cjail >= 0.1 && < 1.0,
                  hails >= 0.1 && < 1.0,
-                 blaze-html >= 0.4.3.3
+                 blaze-html == 0.4.3.3
 
   Ghc-Options: -Wall -fno-warn-orphans
   Extensions: Safe
