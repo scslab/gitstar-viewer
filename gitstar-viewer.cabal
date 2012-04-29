@@ -13,6 +13,8 @@ Cabal-Version:  >= 1.6
 Description:
         GitStar app that implements a simple repo viewer.
 
+X-Hails-Server: Viewer
+
 Library
   Build-Depends: base >= 4.5 && < 5,
                  containers >= 0.4.2 && < 0.5,
@@ -30,4 +32,4 @@ Library
 
   Ghc-Options: -Wall -fno-warn-orphans
   Extensions: Safe
-  Other-Modules: Viewer
+  --Other-Modules: Viewer
