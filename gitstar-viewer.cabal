@@ -1,5 +1,5 @@
 Name:           gitstar-gitviewer
-Version:        0.1
+Version:        0.1.2
 build-type:     Simple
 License:        GPL-2
 License-File:   LICENSE
@@ -32,4 +32,4 @@ Library
 
   Ghc-Options: -Wall -fno-warn-orphans
   Extensions: Safe
-  --Other-Modules: Viewer
+  Other-Modules: Viewer
