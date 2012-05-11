@@ -1,5 +1,5 @@
 Name:           gitstar-gitviewer
-Version:        0.1
+Version:        0.1.2
 build-type:     Simple
 License:        GPL-2
 License-File:   LICENSE
@@ -12,6 +12,8 @@ Cabal-Version:  >= 1.6
 
 Description:
         GitStar app that implements a simple repo viewer.
+
+X-Hails-Server: Viewer
 
 Library
   Build-Depends: base >= 4.5 && < 5,
